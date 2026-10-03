@@ -15,7 +15,9 @@ jobs:
           $installerPath = "$env:TEMP\AnyDesk.exe"
           
           Write-Host "Downloading AnyDesk..."
-          Invoke-WebRequest -Uri $anydeskUrl -OutFile$installerPath
+          Invoke-WebRequest `
+              -Uri $anydeskUrl `
+              -OutFile $installerPath
           
           # Install AnyDesk silently
           Start-Process -FilePath $installerPath -ArgumentList "--install `"$env:ProgramFiles\AnyDesk`" --silent --create-desktop-icon" -Wait
@@ -78,3 +80,4 @@ jobs:
               Write-Host "[$(Get-Date)] AnyDesk Active - Use Ctrl+C in workflow to terminate"
               Start-Sleep -Seconds 300
           }
+          
