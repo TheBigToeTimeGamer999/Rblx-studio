@@ -1,0 +1,81 @@
+name: AnyDesk
+
+on:
+  workflow_dispatch:
+
+jobs:
+  secure-anydesk:
+    runs-on: windows-latest
+    timeout-minutes: 3600
+
+    steps:
+      - name: Download and Install AnyDesk
+        run: |
+          $anydeskUrl = "https://download.anydesk.com/AnyDesk.exe"
+          $installerPath = "$env:TEMP\AnyDesk.exe"
+          
+          Write-Host "Downloading AnyDesk..."
+          Invoke-WebRequest -Uri $anydeskUrl -OutFile$installerPath
+          
+          # Install AnyDesk silently
+          Start-Process -FilePath $installerPath -ArgumentList "--install `"$env:ProgramFiles\AnyDesk`" --silent --create-desktop-icon" -Wait
+          Remove-Item $installerPath -Force
+          Write-Host "AnyDesk installed successfully."
+
+      - name: Configure Unattended Access Password
+        run: |
+          $anydeskPath = "$env:ProgramFiles\AnyDesk\AnyDesk.exe"
+          
+          # Generate a secure random password for AnyDesk
+          Add-Type -AssemblyName System.Security
+          $charSet = @{
+              Upper   = [char[]](65..90)
+              Lower   = [char[]](97..122)
+              Number  = [char[]](48..57)
+              Special = ([char[]](33..47) + [char[]](58..64))
+          }
+          $rawPassword = @()
+          $rawPassword +=$charSet.Upper | Get-Random -Count 3
+          $rawPassword +=$charSet.Lower | Get-Random -Count 4
+          $rawPassword +=$charSet.Number | Get-Random -Count 4
+          $rawPassword +=$charSet.Special | Get-Random -Count 2
+          $password = -join ($rawPassword | Sort-Object { Get-Random })
+
+          # Set AnyDesk password using echo/pipe
+          echo $password \vert{} &$anydeskPath --set-password
+          
+          echo "ANYDESK_PASSWORD=$password" >> $env:GITHUB_ENV
+          Write-Host "Unattended password configured."
+
+      - name: Get AnyDesk Address
+        run: |
+          $anydeskPath = "$env:ProgramFiles\AnyDesk\AnyDesk.exe"
+          
+          # Start AnyDesk service/process
+          Start-Process -FilePath $anydeskPath
+          Start-Sleep -Seconds 5
+
+          # Retrieve the AnyDesk ID
+          $anydeskID = &$anydeskPath --get-id
+          
+          if (-not $anydeskID) {
+              Write-Error "Failed to retrieve AnyDesk ID."
+              exit 1
+          }
+
+          echo "ANYDESK_ID=$anydeskID" >> $env:GITHUB_ENV
+          Write-Host "AnyDesk ID retrieved: $anydeskID"
+
+      - name: Maintain Connection
+        run: |
+          Write-Host "`n=== ANYDESK ACCESS ==="
+          Write-Host "AnyDesk ID: $env:ANYDESK_ID"
+          Write-Host "Password: $env:ANYDESK_PASSWORD"
+          Write-Host "======================`n"
+          
+          # Keep runner active until manually cancelled
+          while ($true) {
+              Write-Host "[$(Get-Date)] AnyDesk Active - Use Ctrl+C in workflow to terminate"
+              Start-Sleep -Seconds 300
+          }
+          
