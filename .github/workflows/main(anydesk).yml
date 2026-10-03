@@ -15,9 +15,7 @@ jobs:
           $installerPath = "$env:TEMP\AnyDesk.exe"
           
           Write-Host "Downloading AnyDesk..."
-          Invoke-WebRequest `
-              -Uri $anydeskUrl `
-              -OutFile $installerPath
+          Invoke-WebRequest -Uri $anydeskUrl -OutFile$installerPath
           
           # Install AnyDesk silently
           Start-Process -FilePath $installerPath -ArgumentList "--install `"$env:ProgramFiles\AnyDesk`" --silent --create-desktop-icon" -Wait
@@ -43,8 +41,8 @@ jobs:
           $rawPassword +=$charSet.Special | Get-Random -Count 2
           $password = -join ($rawPassword | Sort-Object { Get-Random })
 
-          # Set AnyDesk password using echo/pipe
-          echo $password \vert{} &$anydeskPath --set-password
+          # Set AnyDesk password using PowerShell pipeline safely
+          $password \vert{} &$anydeskPath --set-password
           
           echo "ANYDESK_PASSWORD=$password" >> $env:GITHUB_ENV
           Write-Host "Unattended password configured."
